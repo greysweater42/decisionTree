@@ -1,6 +1,13 @@
 d <- iris[, c("Species", "Sepal.Length", "Sepal.Width")]
+
 d$Species <- as.character(d$Species)
 d$Species[d$Species != "setosa"] <- "non-setosa"
+x <- d$Sepal.Length
+x[d$Sepal.Length <= 5.2] <- "Very Short"
+x[d$Sepal.Length >  5.2 & d$Sepal.Length <= 6.1] <- "Short"
+x[d$Sepal.Length >  6.1 & d$Sepal.Length <= 7.0] <- "Long"
+x[d$Sepal.Length >  7.0] <- "Very Long"
+d$Sepal.Length <- x
 
 library(ggplot2)
 ggplot(data = d, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) +
@@ -18,7 +25,7 @@ evaluateNumericAttribute <- function(d, x) {
     vs <- unique(vs)
 
     best_H <- Inf
-    m <- 0
+    best_v <- 0
     for (v in vs) {
         dy <- d[d[[x]] <  v,]
         dn <- d[d[[x]] >= v,]
@@ -29,32 +36,74 @@ evaluateNumericAttribute <- function(d, x) {
         H1 <- sum(nv1) / n * pcdy + sum(nv2) / n * pcdn
         if (H1 < best_H) {
             best_H <- H1
-            m <- v
+            best_v <- v
         }
     }
     n0 <- table(d[[1]])
     H0 <- -sum(n0/n * log(n0/n, 2))
-    result <- list(v=m, score=H0 - best_H, X=x)
+    result <- list(v=best_v, score=H0 - best_H, X=x)
+    return(result)
+}
+
+evaluateCateoricalAttribute <- function(d, x) {
+    # should be a private function
+    cnames <- unique(d[[1]])
+    n <- nrow(d)
+    k <- length(cnames)
+    V <- unique(d[[x]])
+    m <- length(V)
+    vs <- list()
+    for (i in 1:floor(m/2)) {
+        vs <- c(vs, combn(V, i, simplify=F))     
+    }
+
+    best_H <- Inf
+    best_v <- 0
+    for (v in vs) {
+        dy <- d[d[[x]] %in%  v,]
+        dn <- d[!d[[x]] %in% v,]
+        nv1 <- table(dy[[1]])
+        nv2 <- table(dn[[1]])
+        pcdy <- entropy(nv1, cnames)
+        pcdn <- entropy(nv2, cnames)
+        H1 <- sum(nv1) / n * pcdy + sum(nv2) / n * pcdn
+        if (H1 < best_H) {
+            best_H <- H1
+            best_v <- v
+        }
+    }
+    n0 <- table(d[[1]])
+    H0 <- -sum(n0/n * log(n0/n, 2))
+    result <- list(v=best_v, score=H0 - best_H, X=x)
     return(result)
 }
 
 decisionTree <- function(d, eta=5, purity=0.95) {
+    #     if (missing(eta)) eta <- floor(nrow(d) / 10)  # TODO eta shouldn't have default value
     if (!nrow(d)) return()
     d_purity <- max(table(d[[1]]) / nrow(d))
-    if (nrow(d) < eta | d_purity > purity) {
-        return()
-    }
+    if (nrow(d) < eta | d_purity > purity) return() 
     dd <- ncol(d) - 1  # number of attributes
     result <- list(v=0, score=0, X="")
     for (i in 1:dd) {
         attr_name <- colnames(d)[i+1]
-        result0 <- evaluateNumericAttribute(d, attr_name) 
+        result0 <- if (is.numeric(d[[attr_name]])) 
+            evaluateNumericAttribute(d, attr_name) else         
+                evaluateCateoricalAttribute(d, attr_name)
         if (result0$score > result$score) result <- result0
     }
-    dy <- d[d[[result$X]] <= result$v,]
-    dn <- d[d[[result$X]] > result$v,]
-    cat(result$X, "\t", result$v, "\t", nrow(dy), "\t", nrow(dn), "\n")
-    decisionTree(dy)
+    if (is.numeric(result$v)) {
+        dy <- d[d[[result$X]] <= result$v,]
+        dn <- d[d[[result$X]] > result$v,]
+    } else {
+        dy <- d[d[[result$X]] %in% result$v,]
+        dn <- d[!d[[result$X]] %in% result$v,]
+    }
+    print(result$X)
+    print(result$v)
+    print(paste(nrow(dy), nrow(dn)))
+    print("")
+    decisionTree(dy)        
     decisionTree(dn)
 }
 
@@ -68,6 +117,5 @@ entropy <- function(nv, cnames) {
     return(e)
 }
 
-decisionTree(d)
-
+decisionTree(d, eta=10, purity=0.95)
 
