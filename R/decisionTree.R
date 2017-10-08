@@ -78,8 +78,16 @@ evaluateCateoricalAttribute <- function(d, x) {
     return(result)
 }
 
-decisionTree <- function(d, eta=5, purity=0.95) {
-    #     if (missing(eta)) eta <- floor(nrow(d) / 10)  # TODO eta shouldn't have default value
+
+decisionTree <- function(d, eta=10, purity=0.95) {
+    listToPrint <- list()
+    baseEnv <- environment()
+    decisionTreeRecursive(d, eta=eta, purity=purity, L="root", env=baseEnv)
+    return(listToPrint)
+}
+
+
+decisionTreeRecursive <- function(d, eta, purity, L, env) {
     if (!nrow(d)) return()
     d_purity <- max(table(d[[1]]) / nrow(d))
     if (nrow(d) < eta | d_purity > purity) return() 
@@ -99,12 +107,11 @@ decisionTree <- function(d, eta=5, purity=0.95) {
         dy <- d[d[[result$X]] %in% result$v,]
         dn <- d[!d[[result$X]] %in% result$v,]
     }
-    print(result$X)
-    print(result$v)
-    print(paste(nrow(dy), nrow(dn)))
-    print("")
-    decisionTree(dy)        
-    decisionTree(dn)
+    level <- paste(rep("   ", length(sys.frames())), collapse="")
+    toPrint <- paste(level, result$X, result$v, nrow(dy), nrow(dn), L)
+    env$listToPrint <- c(env$listToPrint, toPrint)
+    decisionTreeRecursive(dy, eta=eta, purity=purity, L="L", env=env)        
+    decisionTreeRecursive(dn, eta=eta, purity=purity, L="P", env=env)
 }
 
 entropy <- function(nv, cnames) {
@@ -117,5 +124,5 @@ entropy <- function(nv, cnames) {
     return(e)
 }
 
-decisionTree(d, eta=10, purity=0.95)
+decisionTree(d, eta=5)
 
