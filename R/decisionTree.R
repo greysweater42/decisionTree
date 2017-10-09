@@ -1,20 +1,20 @@
-d <- iris[, c("Species", "Sepal.Length", "Sepal.Width")]
-
-d$Species <- as.character(d$Species)
-d$Species[d$Species != "setosa"] <- "non-setosa"
-x <- d$Sepal.Length
-x[d$Sepal.Length <= 5.2] <- "Very Short"
-x[d$Sepal.Length >  5.2 & d$Sepal.Length <= 6.1] <- "Short"
-x[d$Sepal.Length >  6.1 & d$Sepal.Length <= 7.0] <- "Long"
-x[d$Sepal.Length >  7.0] <- "Very Long"
-d$Sepal.Length <- x
+# d <- iris[, c("Species", "Sepal.Length", "Sepal.Width")]
+# 
+# d$Species <- as.character(d$Species)
+# d$Species[d$Species != "setosa"] <- "non-setosa"
+# x <- d$Sepal.Length
+# x[d$Sepal.Length <= 5.2] <- "Very Short"
+# x[d$Sepal.Length >  5.2 & d$Sepal.Length <= 6.1] <- "Short"
+# x[d$Sepal.Length >  6.1 & d$Sepal.Length <= 7.0] <- "Long"
+# x[d$Sepal.Length >  7.0] <- "Very Long"
+# d$Sepal.Length <- x
 
 library(ggplot2)
 ggplot(data = d, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) +
     geom_point()
 
 
-evaluateNumericAttribute <- function(d, x) {
+.evaluateNumericAttribute <- function(d, x) {
     # should be a private function
     cnames <- unique(d[[1]])
     d <- d[order(d[[x]]),]  # sort D on attribute X
@@ -31,8 +31,8 @@ evaluateNumericAttribute <- function(d, x) {
         dn <- d[d[[x]] >= v,]
         nv1 <- table(dy[[1]])
         nv2 <- table(dn[[1]])
-        pcdy <- entropy(nv1, cnames)
-        pcdn <- entropy(nv2, cnames)
+        pcdy <- .entropy(nv1, cnames)
+        pcdn <- .entropy(nv2, cnames)
         H1 <- sum(nv1) / n * pcdy + sum(nv2) / n * pcdn
         if (H1 < best_H) {
             best_H <- H1
@@ -45,7 +45,7 @@ evaluateNumericAttribute <- function(d, x) {
     return(result)
 }
 
-evaluateCateoricalAttribute <- function(d, x) {
+.evaluateCategoricalAttribute <- function(d, x) {
     # should be a private function
     cnames <- unique(d[[1]])
     n <- nrow(d)
@@ -64,8 +64,8 @@ evaluateCateoricalAttribute <- function(d, x) {
         dn <- d[!d[[x]] %in% v,]
         nv1 <- table(dy[[1]])
         nv2 <- table(dn[[1]])
-        pcdy <- entropy(nv1, cnames)
-        pcdn <- entropy(nv2, cnames)
+        pcdy <- .entropy(nv1, cnames)
+        pcdn <- .entropy(nv2, cnames)
         H1 <- sum(nv1) / n * pcdy + sum(nv2) / n * pcdn
         if (H1 < best_H) {
             best_H <- H1
@@ -82,12 +82,12 @@ evaluateCateoricalAttribute <- function(d, x) {
 decisionTree <- function(d, eta=10, purity=0.95) {
     listToPrint <- list()
     baseEnv <- environment()
-    decisionTreeRecursive(d, eta=eta, purity=purity, L="root", env=baseEnv)
+    .decisionTreeRecursive(d, eta=eta, purity=purity, L="root", env=baseEnv)
     return(listToPrint)
 }
 
 
-decisionTreeRecursive <- function(d, eta, purity, L, env) {
+.decisionTreeRecursive <- function(d, eta, purity, L, env) {
     if (!nrow(d)) return()
     d_purity <- max(table(d[[1]]) / nrow(d))
     if (nrow(d) < eta | d_purity > purity) return() 
@@ -96,8 +96,8 @@ decisionTreeRecursive <- function(d, eta, purity, L, env) {
     for (i in 1:dd) {
         attr_name <- colnames(d)[i+1]
         result0 <- if (is.numeric(d[[attr_name]])) 
-            evaluateNumericAttribute(d, attr_name) else         
-                evaluateCateoricalAttribute(d, attr_name)
+            .evaluateNumericAttribute(d, attr_name) else         
+                .evaluateCategoricalAttribute(d, attr_name)
         if (result0$score > result$score) result <- result0
     }
     if (is.numeric(result$v)) {
@@ -110,12 +110,11 @@ decisionTreeRecursive <- function(d, eta, purity, L, env) {
     level <- paste(rep("   ", length(sys.frames())), collapse="")
     toPrint <- paste(level, result$X, result$v, nrow(dy), nrow(dn), L)
     env$listToPrint <- c(env$listToPrint, toPrint)
-    decisionTreeRecursive(dy, eta=eta, purity=purity, L="L", env=env)        
-    decisionTreeRecursive(dn, eta=eta, purity=purity, L="P", env=env)
+    .decisionTreeRecursive(dy, eta=eta, purity=purity, L="L", env=env)        
+    .decisionTreeRecursive(dn, eta=eta, purity=purity, L="P", env=env)
 }
 
-entropy <- function(nv, cnames) {
-    # should be a private function
+.entropy <- function(nv, cnames) {
     e <- 0  # entropy
     n <- sum(nv)
     for (cname in cnames)
@@ -124,5 +123,5 @@ entropy <- function(nv, cnames) {
     return(e)
 }
 
-decisionTree(d, eta=5)
+# decisionTree(d, eta=20)
 
