@@ -9,9 +9,9 @@
 # x[d$Sepal.Length >  7.0] <- "Very Long"
 # d$Sepal.Length <- x
 
-library(ggplot2)
-ggplot(data = d, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) +
-    geom_point()
+# library(ggplot2)
+# ggplot(data = d, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) +
+#     geom_point()
 
 
 .evaluateNumericAttribute <- function(d, x) {
@@ -82,13 +82,13 @@ ggplot(data = d, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) +
 decisionTree <- function(d, eta=10, purity=0.95) {
     listToPrint <- list()
     baseEnv <- environment()
-    .decisionTreeRecursive(d, eta=eta, purity=purity, L="root", env=baseEnv)
+    .decisionTreeRecursive(d, eta=eta, purity=purity, L="root", 
+                           env=baseEnv, allX=unique(d[[1]]))
     return(listToPrint)
 }
 
 
-.decisionTreeRecursive <- function(d, eta, purity, L, env) {
-    if (!nrow(d)) return()
+.decisionTreeRecursive <- function(d, eta, purity, L, env, allX) {
     d_purity <- max(table(d[[1]]) / nrow(d))
     if (nrow(d) < eta | d_purity > purity) return() 
     dd <- ncol(d) - 1  # number of attributes
@@ -108,10 +108,12 @@ decisionTree <- function(d, eta=10, purity=0.95) {
         dn <- d[!d[[result$X]] %in% result$v,]
     }
     level <- paste(rep("   ", length(sys.frames())), collapse="")
-    toPrint <- paste(level, result$X, result$v, nrow(dy), nrow(dn), L)
+    numsDy <- paste0(table(dy[[1]])[allX], collapse="-")
+    numsDx <- paste0(table(dn[[1]])[allX], collapse="-")
+    toPrint <- paste(level, result$X, result$v, nrow(dy), nrow(dn), L, numsDy, "-", numsDx)
     env$listToPrint <- c(env$listToPrint, toPrint)
-    .decisionTreeRecursive(dy, eta=eta, purity=purity, L="L", env=env)        
-    .decisionTreeRecursive(dn, eta=eta, purity=purity, L="P", env=env)
+    .decisionTreeRecursive(dy, eta=eta, purity=purity, L="L", env=env, allX=allX)        
+    .decisionTreeRecursive(dn, eta=eta, purity=purity, L="P", env=env, allX=allX)
 }
 
 .entropy <- function(nv, cnames) {
@@ -123,5 +125,5 @@ decisionTree <- function(d, eta=10, purity=0.95) {
     return(e)
 }
 
-# decisionTree(d, eta=20)
+decisionTree(d, purity=0.8)
 
