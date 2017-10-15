@@ -7,16 +7,41 @@
 #' @param minsplit do not split nodes that are smaller than minsplit
 #' @keywords decision tree, information gain
 #' @export
+#' @examples
+#' d <- iris[, c("Species", "Sepal.Length", "Sepal.Width")]
+#' d$Species <- as.character(d$Species)
+#' d$Species[d$Species != "setosa"] <- "non-setosa"
+#' x <- d$Sepal.Length
+#' x[d$Sepal.Length <= 5.2] <- "Very Short"
+#' x[d$Sepal.Length >  5.2 & d$Sepal.Length <= 6.1] <- "Short"
+#' x[d$Sepal.Length >  6.1 & d$Sepal.Length <= 7.0] <- "Long"
+#' x[d$Sepal.Length >  7.0] <- "Very Long"
+#' d$Sepal.Length <- x
+#' decisionTree(d, eta=5, purity=0.95, minsplit=0)
 
+# ---- decisionTree
 decisionTree <- function(d, eta=10, purity=0.95, minsplit=10) {
-    listToPrint <- list()
+    resultDF <- data.frame(node=numeric(), 
+                           parent=numeric(),
+                           level=numeric(), 
+                           RL=character(),
+                           Lsize=numeric(), 
+                           Lleft=numeric(), 
+                           Lright=numeric(), 
+                           Rsize=numeric(), 
+                           Rleft=numeric(), 
+                           Rsize=numeric(),
+                           vName=character())
+    node <- 0
     baseEnv <- environment()
-    .decisionTreeRecursive(d, eta=eta, purity=purity, L="root", 
+    .decisionTreeRecursive(d, eta=eta, purity=purity, LR="root", 
                            env=baseEnv, allX=unique(d[[1]]), 
                            minsplit=minsplit)
-    return(listToPrint)
+    resultDF$level <- resultDF$level - min(resultDF$level) + 1  # scaling to 1
+    return(resultDF)
 }
 
+# ---- .evaluatNumericAttribute
 .evaluateNumericAttribute <- function(d, x, minsplit) {
     # should be a private function
     cnames <- unique(d[[1]])
@@ -49,6 +74,7 @@ decisionTree <- function(d, eta=10, purity=0.95, minsplit=10) {
     return(result)
 }
 
+# ---- .evaluateCategoricalAttribute
 .evaluateCategoricalAttribute <- function(d, x, minsplit) {
     # should be a private function
     cnames <- unique(d[[1]])
@@ -83,6 +109,7 @@ decisionTree <- function(d, eta=10, purity=0.95, minsplit=10) {
     return(result)
 }
 
+# ---- .entropy
 .entropy <- function(nv, cnames) {
     e <- 0  # entropy
     n <- sum(nv)
@@ -91,9 +118,9 @@ decisionTree <- function(d, eta=10, purity=0.95, minsplit=10) {
             e <- e - (nv[cname] / n) * log(nv[cname] / n, 2)
     return(e)
 }
-#' }}}
 
-.decisionTreeRecursive <- function(d, eta, purity, L, env, allX, minsplit=10) {
+# ---- .decisionTreeRecursive
+.decisionTreeRecursive <- function(d, eta, purity, LR, env, allX, minsplit=10) {
     d_purity <- max(table(d[[1]]) / nrow(d))
     if (nrow(d) < eta | d_purity > purity) return() 
     dd <- ncol(d) - 1  # number of attributes
@@ -112,14 +139,31 @@ decisionTree <- function(d, eta=10, purity=0.95, minsplit=10) {
         dy <- d[d[[result$X]] %in% result$v,]
         dn <- d[!d[[result$X]] %in% result$v,]
     }
-    level <- paste(rep("   ", length(sys.frames())), collapse="")
-    numsDy <- paste0(table(dy[[1]])[allX], collapse="-")
-    numsDx <- paste0(table(dn[[1]])[allX], collapse="-")
-    toPrint <- paste(level, result$X, paste(result$v, collapse=", "), nrow(dy), 
-                     nrow(dn), L, numsDy, "-", numsDx)
-    env$listToPrint <- c(env$listToPrint, toPrint)
-    .decisionTreeRecursive(dy, eta=eta, purity=purity, L="L", env=env, allX=allX, minsplit=minsplit)        
-    .decisionTreeRecursive(dn, eta=eta, purity=purity, L="P", env=env, allX=allX, minsplit=minsplit)
+    env$node <- env$node + 1
+    level <- length(sys.frames())
+    parent <- 0
+    for (i in nrow(env$resultDF):1) {  # get parent node number
+        if (!nrow(env$resultDF)) {
+            break
+        } else if (env$resultDF$level[i] == level - 1) {
+            parent <- env$resultDF$node[i]
+            break
+        }
+    }
+    toAppend <- data.frame(node=env$node, 
+                           parent=parent,
+                           level=level,
+                           LR=LR,
+                           Lsize=nrow(dy),
+                           Lleft=if(is.na(table(dy[[1]])[allX][1])) 0 else table(dy[[1]])[allX][1],
+                           LRight=if(is.na(table(dy[[1]])[allX][2])) 0 else table(dy[[1]])[allX][2],
+                           Rsize=nrow(dn),
+                           Rleft=if(is.na(table(dn[[1]])[allX][1])) 0 else table(dn[[1]])[allX][1],
+                           RRight=if(is.na(table(dn[[1]])[allX][2])) 0 else table(dn[[1]])[allX][2],
+                           vName=result$X)
+    rownames(toAppend) <- NULL
+    env$resultDF <- rbind(env$resultDF, toAppend)
+    .decisionTreeRecursive(dy, eta=eta, purity=purity, LR="L", env=env, allX=allX, minsplit=minsplit)        
+    .decisionTreeRecursive(dn, eta=eta, purity=purity, LR="R", env=env, allX=allX, minsplit=minsplit)
 }
-
 
