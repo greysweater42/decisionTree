@@ -1,7 +1,7 @@
-#' decision tree 
+#' decisionTree
 #'
-#' Decision tree algorithm using information gain (entropy), works both for categorical and numerical attributes. Based on Zaki, Meira Jr., Data Mining and Analysis, p.481-496.
-#' @param d data frame, first column is dependant variable
+#' Decision tree algorithm uses information gain (entropy), works both for categorical and numerical attributes. Based on Zaki, Meira Jr., Data Mining and Analysis, p.481-496.
+#' @param d data frame, dependant variable must be in the first column
 #' @param eta stop criterium, size of a leaf
 #' @param purity stop criterium, purity of a leaf
 #' @param minsplit do not split nodes that are smaller than minsplit
@@ -21,22 +21,34 @@
 
 # ---- decisionTree
 decisionTree <- function(d, eta=10, purity=0.95, minsplit=10) {
-    resultDF <- data.frame(node=numeric(), 
+    resultDF <- data.frame(level=numeric(), 
                            parent=numeric(),
-                           level=numeric(), 
+                           node=numeric(), 
+                           leaf=numeric(),
                            RL=character(),
                            Lsize=numeric(), 
                            Lleft=numeric(), 
                            Lright=numeric(), 
                            Rsize=numeric(), 
                            Rleft=numeric(), 
+                           Rright=numeric(), 
                            Rsize=numeric(),
-                           vName=character())
+                           v=character(),
+                           vC=character(),  # complement to v
+                           vName=character(),
+                           stringsAsFactors=F)
+    cs <- list()
+    for (coln in colnames(d)) {
+        if (is.character(d[[coln]])) {
+            cs[[coln]] <- unique(d[[coln]])
+        }
+    }
     node <- 0
+    leaf <- 0
     baseEnv <- environment()
     .decisionTreeRecursive(d, eta=eta, purity=purity, LR="root", 
                            env=baseEnv, allX=unique(d[[1]]), 
-                           minsplit=minsplit)
+                           minsplit=minsplit, cs=cs)
     resultDF$level <- resultDF$level - min(resultDF$level) + 1  # scaling to 1
     return(resultDF)
 }
@@ -120,26 +132,8 @@ decisionTree <- function(d, eta=10, purity=0.95, minsplit=10) {
 }
 
 # ---- .decisionTreeRecursive
-.decisionTreeRecursive <- function(d, eta, purity, LR, env, allX, minsplit=10) {
+.decisionTreeRecursive <- function(d, eta, purity, LR, env, allX, minsplit=10, cs) {
     d_purity <- max(table(d[[1]]) / nrow(d))
-    if (nrow(d) < eta | d_purity > purity) return() 
-    dd <- ncol(d) - 1  # number of attributes
-    result <- list(v=0, score=0, X="")
-    for (i in 1:dd) {
-        attr_name <- colnames(d)[i+1]
-        result0 <- if (is.numeric(d[[attr_name]])) 
-            .evaluateNumericAttribute(d, attr_name, minsplit=minsplit) else         
-                .evaluateCategoricalAttribute(d, attr_name, minsplit=minsplit)
-        if (result0$score > result$score) result <- result0
-    }
-    if (is.numeric(result$v)) {
-        dy <- d[d[[result$X]] <= result$v,]
-        dn <- d[d[[result$X]] > result$v,]
-    } else {
-        dy <- d[d[[result$X]] %in% result$v,]
-        dn <- d[!d[[result$X]] %in% result$v,]
-    }
-    env$node <- env$node + 1
     level <- length(sys.frames())
     parent <- 0
     for (i in nrow(env$resultDF):1) {  # get parent node number
@@ -150,20 +144,81 @@ decisionTree <- function(d, eta=10, purity=0.95, minsplit=10) {
             break
         }
     }
-    toAppend <- data.frame(node=env$node, 
-                           parent=parent,
-                           level=level,
-                           LR=LR,
-                           Lsize=nrow(dy),
-                           Lleft=if(is.na(table(dy[[1]])[allX][1])) 0 else table(dy[[1]])[allX][1],
-                           LRight=if(is.na(table(dy[[1]])[allX][2])) 0 else table(dy[[1]])[allX][2],
-                           Rsize=nrow(dn),
-                           Rleft=if(is.na(table(dn[[1]])[allX][1])) 0 else table(dn[[1]])[allX][1],
-                           RRight=if(is.na(table(dn[[1]])[allX][2])) 0 else table(dn[[1]])[allX][2],
-                           vName=result$X)
-    rownames(toAppend) <- NULL
-    env$resultDF <- rbind(env$resultDF, toAppend)
-    .decisionTreeRecursive(dy, eta=eta, purity=purity, LR="L", env=env, allX=allX, minsplit=minsplit)        
-    .decisionTreeRecursive(dn, eta=eta, purity=purity, LR="R", env=env, allX=allX, minsplit=minsplit)
+    if (nrow(d) < eta | d_purity > purity) {  # leaf
+        env$node <- env$node + 1
+        env$leaf <- env$leaf + 1
+        te <- data.frame(level=level,
+                         parent=parent,
+                         node=env$node,
+                         leaf=env$leaf,
+                         LR=LR,
+                         Lsize=nrow(d),
+                         Lleft=if(is.na(table(d[[1]])[allX][1])) 0 else table(d[[1]])[allX][1],
+                         Lright=if(is.na(table(d[[1]])[allX][2])) 0 else table(d[[1]])[allX][2],
+                         Rsize=0,
+                         Rleft=0,
+                         Rright=0,
+                         v="",
+                         vC="",
+                         vName="leaf",
+                         stringsAsFactors=F)
+        rownames(te) <- NULL
+        env$resultDF <- rbind(env$resultDF, te)
+        return() 
+    } else {  # node
+        toPrint <- data.frame(res0=character(), score=character(), v=character(), stringsAsFactors=F)
+        dd <- ncol(d) - 1  # number of attributes
+        result <- list(v=0, score=0, X="")
+        for (i in 1:dd) {
+            attr_name <- colnames(d)[i+1]
+            result0 <- if (is.numeric(d[[attr_name]])) 
+                .evaluateNumericAttribute(d, attr_name, minsplit=minsplit) else         
+                    .evaluateCategoricalAttribute(d, attr_name, minsplit=minsplit)
+            vToPrint <- data.frame(res0=result0$X, score=result0$score, v=paste(result0$v, collapse=","), stringsAsFactors=F)
+            toPrint <- rbind(toPrint, vToPrint, stringsAsFactors=F)
+            if (result0$score > result$score) result <- result0
+        }
+        colnames(toPrint) <- c(paste0("--", result$X, "--"), "score")
+        toPrint <- toPrint[order(toPrint$score, decreasing=T),]
+        rownames(toPrint) <- NULL
+        print(toPrint)
+        cat("\n")
+        if (is.numeric(result$v)) {
+            dy <- d[d[[result$X]] <= result$v,]
+            dn <- d[d[[result$X]] > result$v,]
+        } else {
+            dy <- d[d[[result$X]] %in% result$v,]
+            dn <- d[!d[[result$X]] %in% result$v,]
+        }
+        env$node <- env$node + 1
+        v <- if (is.numeric(result$v)) paste0("mniejsze niż\n", result$v) else paste(result$v, collapse=",\n")
+        vC <- if (is.numeric(result$v)) paste0("większe niż\n", result$v) else paste(setdiff(cs[[result$X]], result$v) , collapse=",\n")
+        te <- data.frame(level=level,
+                         parent=parent,
+                         node=env$node, 
+                         leaf=0,
+                         LR=LR,
+                         Lsize=nrow(dy),
+                         Lleft=if(is.na(table(dy[[1]])[allX][1])) 0 else table(dy[[1]])[allX][1],
+                         Lright=if(is.na(table(dy[[1]])[allX][2])) 0 else table(dy[[1]])[allX][2],
+                         Rsize=nrow(dn),
+                         Rleft=if(is.na(table(dn[[1]])[allX][1])) 0 else table(dn[[1]])[allX][1],
+                         Rright=if(is.na(table(dn[[1]])[allX][2])) 0 else table(dn[[1]])[allX][2],
+                         v=v,
+                         vC=vC,
+                         vName=result$X,
+                         stringsAsFactors=F)
+        rownames(te) <- NULL
+        env$resultDF <- rbind(env$resultDF, te)
+        .decisionTreeRecursive(dy, eta=eta, purity=purity, LR="L", env=env, 
+                               allX=allX, minsplit=minsplit, cs=cs) 
+        .decisionTreeRecursive(dn, eta=eta, purity=purity, LR="R", env=env, 
+                               allX=allX, minsplit=minsplit, cs=cs)
+    }
 }
+
+# d <- iris[, c("Species", "Sepal.Length", "Sepal.Width")]
+# d$Species <- as.character(d$Species)
+# d$Species[d$Species != "setosa"] <- "non-setosa"
+# dd <- decisionTree(d, eta=5, purity=0.95, minsplit=0)
 
