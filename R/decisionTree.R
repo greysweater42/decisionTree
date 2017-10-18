@@ -37,7 +37,8 @@ decisionTree <- function(d, eta=10, purity=0.95, minsplit=10) {
                            vC=character(),  # complement to v
                            vName=character(),
                            stringsAsFactors=F)
-    cs <- list()
+    nodeChoices <- list()
+    cs <- list()  # cluster uniques
     for (coln in colnames(d)) {
         if (is.character(d[[coln]])) {
             cs[[coln]] <- unique(d[[coln]])
@@ -50,8 +51,14 @@ decisionTree <- function(d, eta=10, purity=0.95, minsplit=10) {
                            env=baseEnv, allX=unique(d[[1]]), 
                            minsplit=minsplit, cs=cs)
     resultDF$level <- resultDF$level - min(resultDF$level) + 1  # scaling to 1
-    return(resultDF)
+    dto <- new("DecisionTreeObject", resultDF=resultDF, nodeChoices=nodeChoices)
+    return(dto)
 }
+
+# ---- DecisionTreeObject
+DecisionTreeObject <- setClass("DecisionTreeObject", 
+                               representation(resultDF="data.frame", 
+                                              nodeChoices="list"))
 
 # ---- .evaluatNumericAttribute
 .evaluateNumericAttribute <- function(d, x, minsplit) {
@@ -166,7 +173,8 @@ decisionTree <- function(d, eta=10, purity=0.95, minsplit=10) {
         env$resultDF <- rbind(env$resultDF, te)
         return() 
     } else {  # node
-        toPrint <- data.frame(res0=character(), score=character(), v=character(), stringsAsFactors=F)
+        nodeChoices <- data.frame(res0=character(), score=character(), 
+                                  v=character(), stringsAsFactors=F)
         dd <- ncol(d) - 1  # number of attributes
         result <- list(v=0, score=0, X="")
         for (i in 1:dd) {
@@ -174,15 +182,15 @@ decisionTree <- function(d, eta=10, purity=0.95, minsplit=10) {
             result0 <- if (is.numeric(d[[attr_name]])) 
                 .evaluateNumericAttribute(d, attr_name, minsplit=minsplit) else         
                     .evaluateCategoricalAttribute(d, attr_name, minsplit=minsplit)
-            vToPrint <- data.frame(res0=result0$X, score=result0$score, v=paste(result0$v, collapse=","), stringsAsFactors=F)
-            toPrint <- rbind(toPrint, vToPrint, stringsAsFactors=F)
+            cNodeChoices <- data.frame(res0=result0$X, score=result0$score, 
+                                       v=paste(result0$v, collapse=","), 
+                                       stringsAsFactors=F)
+            nodeChoices <- rbind(nodeChoices, cNodeChoices, stringsAsFactors=F)
             if (result0$score > result$score) result <- result0
         }
-        colnames(toPrint) <- c(paste0("--", result$X, "--"), "score")
-        toPrint <- toPrint[order(toPrint$score, decreasing=T),]
-        rownames(toPrint) <- NULL
-        print(toPrint)
-        cat("\n")
+        colnames(nodeChoices) <- c(paste0("--", result$X, "--"), "score", "v")
+        nodeChoices <- nodeChoices[order(nodeChoices$score, decreasing=T),]
+        rownames(nodeChoices) <- NULL
         if (is.numeric(result$v)) {
             dy <- d[d[[result$X]] <= result$v,]
             dn <- d[d[[result$X]] > result$v,]
@@ -191,6 +199,7 @@ decisionTree <- function(d, eta=10, purity=0.95, minsplit=10) {
             dn <- d[!d[[result$X]] %in% result$v,]
         }
         env$node <- env$node + 1
+        env$nodeChoices[[env$node]] <- nodeChoices
         v <- if (is.numeric(result$v)) paste0("mniejsze niż\n", result$v) else paste(result$v, collapse=",\n")
         vC <- if (is.numeric(result$v)) paste0("większe niż\n", result$v) else paste(setdiff(cs[[result$X]], result$v) , collapse=",\n")
         te <- data.frame(level=level,
