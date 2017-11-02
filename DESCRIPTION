@@ -1,7 +1,7 @@
 Package: decisionTree
 Title: Deciosion tree algorithm
 Version: 0.0.0.9000
-Authors@R: person("Tomasz", "Dyrka")
+Authors@R: person("Tomasz", "Dyrka", email = "tomis9@buziaczek.pl", role = c("aut", "cre"))
 Description: Performs decision tree algorithm on given data. Algorithm uses entropy as a criterium of division on every node. Works both for qualititative and quantitative variables.
 Depends: R (>= 3.1.0)
 License: MIT
