@@ -1,10 +1,10 @@
 Package: decisionTree
-Title: What the Package Does (one line, title case)
+Title: Deciosion tree algorithm
 Version: 0.0.0.9000
-Authors@R: person("First", "Last", email = "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
-Depends: R (>= 3.4.1)
-License: What license is it under?
+Authors@R: person("Tomasz", "Dyrka")
+Description: Performs decision tree algorithm on given data. Algorithm uses entropy as a criterium of division on every node. Works both for qualititative and quantitative variables.
+Depends: R (>= 3.1.0)
+License: MIT
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.0.1.9000
