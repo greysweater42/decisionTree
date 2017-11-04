@@ -67,17 +67,17 @@ plot.DecisionTreeObject <- function(DecisionTreeObject, dict, green=1, left=1) {
     lines((x / 2 + 1/2) * (cpar$x - d[i, "x"]) + d[i, "x"],
           y / pi + cpar$level, lwd = width, col="gray") 
   }
-  rect(0.5, 0, nrow(d[d$leaf != 0,]) + 0.5, 1, col="white", border=NA)
 
   # ---- plot vertices
+  rect(0.5, 0, nrow(d[d$leaf != 0,]) + 0.5, 1, col="white", border=NA)
   color <- rep("white", nrow(d))
   cols <- (d$Lleft + d$Rleft) / (d$Lsize + d$Rsize) * 255 
   if (green == 1) {
-    color <- paste0("#", as.hexmode(round(255 - cols)), 
-                    as.hexmode(round(cols)), "00")
+    color <- paste0("#", format(as.hexmode(round(255 - cols)), 2), 
+                    format(as.hexmode(round(cols)), 2), "00")
   } else {
-    color <- paste0("#", as.hexmode(round(cols)), 
-                    as.hexmode(round(255 - cols)), "00")
+    color <- paste0("#", format(as.hexmode(round(cols)), 2), 
+                    format(as.hexmode(round(255 - cols)), 2), "00")
   }
   widthCoef <- rep(1.8, nrow(d))
   widthCoef[d$leaf != 0] <- 1.1

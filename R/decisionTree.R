@@ -65,7 +65,7 @@ DecisionTreeObject <- setClass("DecisionTreeObject",
 # ---- .evaluatNumericAttribute
 .evaluateNumericAttribute <- function(d, x, minsplit) {
   cnames <- unique(d[[1]])
-  d <- d[order(d[[x]]),]  # sort D on attribute X
+  d <- d[(order(d[[x]])),]  # sort D on attribute X
   n <- nrow(d)
   k <- length(unique(d[[1]]))
 
