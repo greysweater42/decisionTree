@@ -1,10 +1,11 @@
 #' decisionTree
 #'
-#' Decision tree algorithm uses information gain (entropy), works both for categorical and numerical attributes. Based on Zaki, Meira Jr., Data Mining and Analysis, p.481-496.
-#' @param d data.frame, dependant variable must be in the first column
+#' Decision tree algorithm uses information gain (entropy) as a division criterium, works both for categorical and numerical attributes. Based on Zaki, Meira Jr., Data Mining and Analysis, p.481-496.
+#' @param d data.frame, dependant variable must be in the first column and must be a character
 #' @param eta stop criterium, size of a leaf
 #' @param purity stop criterium, purity of a leaf
 #' @param minsplit do not split nodes that are smaller than minsplit
+#' @return A \code{DecisionTreeObject} consists of two slots: resultDF and nodeChoices.
 #' @keywords decision tree, information gain
 #' @export
 #' @examples
