@@ -22,17 +22,17 @@
 
 # ---- decisionTree
 decisionTree <- function(d, eta = 10, purity = 0.95, minsplit = 10) {
-  resultDF <- data.frame(level = numeric(), 
+  resultDF <- data.frame(level = numeric(),
                          parent = numeric(),
-                         node = numeric(), 
+                         node = numeric(),
                          leaf = numeric(),
                          RL = character(),
-                         Lsize = numeric(), 
-                         Lleft = numeric(), 
-                         Lright = numeric(), 
-                         Rsize = numeric(), 
-                         Rleft = numeric(), 
-                         Rright = numeric(), 
+                         Lsize = numeric(),
+                         Lleft = numeric(),
+                         Lright = numeric(),
+                         Rsize = numeric(),
+                         Rleft = numeric(),
+                         Rright = numeric(),
                          Rsize = numeric(),
                          v = character(),
                          vC = character(),  # complement to v
@@ -48,18 +48,18 @@ decisionTree <- function(d, eta = 10, purity = 0.95, minsplit = 10) {
   node <- 0
   leaf <- 0
   environment(.decisionTreeRecursive) <- environment()
-  .decisionTreeRecursive(d, eta = eta, purity=purity, LR = "root", 
+  .decisionTreeRecursive(d, eta = eta, purity=purity, LR = "root",
                          allX = unique(d[[1]]), minsplit = minsplit, cs = cs)
   resultDF$level <- resultDF$level - min(resultDF$level) + 1  # scaling to 1
-  dto <- new("DecisionTreeObject", 
-             resultDF = resultDF, 
+  dto <- new("DecisionTreeObject",
+             resultDF = resultDF,
              nodeChoices = nodeChoices)
   return(dto)
 }
 
 # ---- DecisionTreeObject
-DecisionTreeObject <- setClass("DecisionTreeObject", 
-                               representation(resultDF = "data.frame", 
+DecisionTreeObject <- setClass("DecisionTreeObject",
+                               representation(resultDF = "data.frame",
                                               nodeChoices = "list"))
 
 # ---- .evaluatNumericAttribute
@@ -106,7 +106,7 @@ DecisionTreeObject <- setClass("DecisionTreeObject",
   m <- length(V)
   vs <- list()
   for (i in 1:floor(m / 2)) {
-    vs <- c(vs, combn(V, i, simplify = F))     
+    vs <- c(vs, combn(V, i, simplify = F))
   }
 
   best_H <- Inf
@@ -136,13 +136,13 @@ DecisionTreeObject <- setClass("DecisionTreeObject",
   e <- 0  # entropy
   n <- sum(nv)
   for (cname in cnames)
-    if (!is.na(nv[cname])) 
+    if (!is.na(nv[cname]))
       e <- e - (nv[cname] / n) * log(nv[cname] / n, 2)
   return(e)
 }
 
 # ---- .decisionTreeRecursive
-.decisionTreeRecursive <- 
+.decisionTreeRecursive <-
   function(d, eta, purity, LR, allX, minsplit = 10, cs) {
   d_purity <- max(table(d[[1]]) / nrow(d))
   level <- length(sys.frames())  # how deep we are now
@@ -160,27 +160,27 @@ DecisionTreeObject <- setClass("DecisionTreeObject",
     leaf <<- leaf + 1
     te <- data.frame(level = level, parent = parent, node = node, leaf = leaf,
                      LR = LR, Lsize = nrow(d),
-                     Lleft = if(is.na(table(d[[1]])[allX][1])) 0 else 
+                     Lleft = if(is.na(table(d[[1]])[allX][1])) 0 else
                        table(d[[1]])[allX][1],
-                     Lright = if(is.na(table(d[[1]])[allX][2])) 0 else 
+                     Lright = if(is.na(table(d[[1]])[allX][2])) 0 else
                        table(d[[1]])[allX][2],
                      Rsize = 0, Rleft = 0, Rright = 0, v = "", vC = "",
                      vName = "leaf", stringsAsFactors = F)
     rownames(te) <- NULL
     resultDF <<- rbind(resultDF, te)
-    return() 
+    return()
   } else {  # node
-    nc <- data.frame(res0 = character(), score=character(), v = character(), 
+    nc <- data.frame(res0 = character(), score=character(), v = character(),
                      stringsAsFactors = F)  # node choices
     dd <- ncol(d) - 1  # number of attributes
     result <- list(v = 0, score=0, X="")
     for (i in 1:dd) {
       attr_name <- colnames(d)[i+1]
-      result0 <- if (is.numeric(d[[attr_name]])) 
-        .evaluateNumericAttribute(d, attr_name, minsplit = minsplit) else         
+      result0 <- if (is.numeric(d[[attr_name]]))
+        .evaluateNumericAttribute(d, attr_name, minsplit = minsplit) else
           .evaluateCategoricalAttribute(d, attr_name, minsplit = minsplit)
-      cNodeChoices <- data.frame(res0 = result0$X, score=result0$score, 
-                                 v = paste(result0$v, collapse=","), 
+      cNodeChoices <- data.frame(res0 = result0$X, score=result0$score,
+                                 v = paste(result0$v, collapse=","),
                                  stringsAsFactors = F)
       nc <- rbind(nc, cNodeChoices, stringsAsFactors = F)
       if (result0$score > result$score) result <- result0
@@ -197,38 +197,27 @@ DecisionTreeObject <- setClass("DecisionTreeObject",
     }
     node <<- node + 1
     nodeChoices[[node]] <<- nc
-    v <- if (is.numeric(result$v)) paste0("less than\n", result$v) else 
+    v <- if (is.numeric(result$v)) paste0("less than\n", result$v) else
       paste(result$v, collapse = ",\n")
-    vC <- if (is.numeric(result$v)) paste0("more than\n", result$v) else 
+    vC <- if (is.numeric(result$v)) paste0("more than\n", result$v) else
       paste(setdiff(cs[[result$X]], result$v) , collapse = ",\n")
     te <- data.frame(level = level, parent = parent, node = node, leaf = 0,
                      LR = LR, Lsize = nrow(dy),
-                     Lleft = if(is.na(table(dy[[1]])[allX][1])) 0 else 
+                     Lleft = if(is.na(table(dy[[1]])[allX][1])) 0 else
                        table(dy[[1]])[allX][1],
-                     Lright = if(is.na(table(dy[[1]])[allX][2])) 0 else 
+                     Lright = if(is.na(table(dy[[1]])[allX][2])) 0 else
                        table(dy[[1]])[allX][2],
                      Rsize = nrow(dn),
-                     Rleft = if(is.na(table(dn[[1]])[allX][1])) 0 else 
+                     Rleft = if(is.na(table(dn[[1]])[allX][1])) 0 else
                        table(dn[[1]])[allX][1],
-                     Rright = if(is.na(table(dn[[1]])[allX][2])) 0 else 
+                     Rright = if(is.na(table(dn[[1]])[allX][2])) 0 else
                        table(dn[[1]])[allX][2],
                      v = v, vC = vC, vName = result$X, stringsAsFactors = F)
     rownames(te) <- NULL
     resultDF <<- rbind(resultDF, te)
     .decisionTreeRecursive(dy, eta = eta, purity=purity, LR="L",
-                           allX = allX, minsplit=minsplit, cs=cs) 
+                           allX = allX, minsplit=minsplit, cs=cs)
     .decisionTreeRecursive(dn, eta = eta, purity=purity, LR="R",
                            allX = allX, minsplit=minsplit, cs=cs)
   }
 }
-
-d <- iris[, c("Species", "Sepal.Length", "Sepal.Width")]
-d$Species <- as.character(d$Species)
-d$Species[d$Species != "setosa"] <- "non-setosa"
-x <- d$Sepal.Length
-x[d$Sepal.Length <= 5.2] <- "Very Short"
-x[d$Sepal.Length >  5.2 & d$Sepal.Length <= 6.1] <- "Short"
-x[d$Sepal.Length >  6.1 & d$Sepal.Length <= 7.0] <- "Long"
-x[d$Sepal.Length >  7.0] <- "Very Long"
-d$Sepal.Length <- x
-dt <- decisionTree(d, eta = 5, purity=0.95, minsplit=0)
